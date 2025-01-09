@@ -44,7 +44,7 @@ public partial class Parser
 
         var json = attrib.AsSpan().Slice(5, attrib.Length - 6);
 
-        return JsonSerializer.Deserialize<PageTitle>(json);
+        return JsonSerializer.Deserialize(json, SourceGenerationContext.Default.PageTitle);
     }
 
     [GeneratedRegex("[\r\n ]+")]
@@ -67,41 +67,51 @@ public partial class Parser
 
             if (text.StartsWith(Totals.CALL_OPEN_INTEREST_TOTAL))
             {
-                totals.CallOpenInterestTotal = text[Totals.CALL_OPEN_INTEREST_TOTAL.Length..].Trim().ToString();
+                totals.CallOpenInterestTotal = GetValue(text, Totals.CALL_OPEN_INTEREST_TOTAL.Length);
                 continue;
             }
 
             if (text.StartsWith(Totals.CALL_PREMIUM_TOTAL))
             {
-                totals.CallPremiumTotal = text[Totals.CALL_PREMIUM_TOTAL.Length..].Trim().ToString();
+                totals.CallPremiumTotal = GetValue(text, Totals.CALL_PREMIUM_TOTAL.Length);
                 continue;
             }
 
             if (text.StartsWith(Totals.PUT_OPEN_INTEREST_TOTAL))
             {
-                totals.PutOpenInterestTotal = text[Totals.PUT_OPEN_INTEREST_TOTAL.Length..].Trim().ToString();
+                totals.PutOpenInterestTotal = GetValue(text, Totals.PUT_OPEN_INTEREST_TOTAL.Length);
                 continue;
             }
 
             if (text.StartsWith(Totals.PUT_CALL_OPEN_INTEREST_RATIO))
             {
-                totals.PutCallOpenInterestRatio = text[Totals.PUT_CALL_OPEN_INTEREST_RATIO.Length..].Trim().ToString();
+                totals.PutCallOpenInterestRatio = GetValue(text, Totals.PUT_CALL_OPEN_INTEREST_RATIO.Length);
                 continue;
             }
 
             if (text.StartsWith(Totals.PUT_CALL_PREMIUM_RATIO))
             {
-                totals.PutCallPremiumRatio = text[Totals.PUT_CALL_PREMIUM_RATIO.Length..].Trim().ToString();
+                totals.PutCallPremiumRatio = GetValue(text, Totals.PUT_CALL_PREMIUM_RATIO.Length);
                 continue;
             }
 
             if (text.StartsWith(Totals.PUT_PREMIUM_TOTAL))
             {
-                totals.PutPremiumTotal = text[Totals.PUT_PREMIUM_TOTAL.Length..].Trim().ToString();
+                totals.PutPremiumTotal = GetValue(text, Totals.PUT_PREMIUM_TOTAL.Length);
             }
         }
 
         return totals;
 
+    }
+
+    private static string GetValue(ReadOnlySpan<char> text, int startIndex)
+    {
+        var span = text[startIndex..].Trim();
+        if (span.StartsWith('$'))
+        {
+            span = span[1..];
+        }
+        return span.ToString();
     }
 }

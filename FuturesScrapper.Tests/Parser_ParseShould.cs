@@ -29,8 +29,8 @@ public class Parser_ParseShould
         var result = Parser.Parse(content);
         var expectedTotals = new Totals
         {
-            PutPremiumTotal = "$879,260.00",
-            CallPremiumTotal = "$231,220.00",
+            PutPremiumTotal = "879,260.00",
+            CallPremiumTotal = "231,220.00",
             PutCallPremiumRatio = "3.80",
             PutOpenInterestTotal = "22,831",
             CallOpenInterestTotal = "30,235",

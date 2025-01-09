@@ -60,7 +60,7 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
         if (empty)
         {
-            write.WriteLine("\"TimeStamp\",\"Last Price\",\"Trade Time\",\"Put Premium Total\",\"Call Premium Total\"");
+            write.WriteLine("\"Trade Time\",\"TimeStamp\",\"Last Price\",\"Put Premium Total\",\"Call Premium Total\"");
         }
 
         write.WriteLine(content);
@@ -71,6 +71,6 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
         var title = result.PageTitle;
         var totals = result.Totals;
 
-        return $"\"{DateTime.Now}\",\"{title?.LastPrice}\",\"{title?.TradeTime}\",\"{totals?.PutPremiumTotal}\",\"{totals?.CallPremiumTotal}\"";
+        return $"\"{title?.TradeTime}\",\"{DateTime.Now:HH:mm:ss}\",\"{title?.LastPrice}\",\"{totals?.PutPremiumTotal}\",\"{totals?.CallPremiumTotal}\"";
     }
 }
