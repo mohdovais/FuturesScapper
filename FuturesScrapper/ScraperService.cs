@@ -8,7 +8,7 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
         if (string.IsNullOrEmpty(content))
         {
-            logger.LogError("Empty content received from remote web server");
+            logger.LogError("No content");
             return;
         }
 
@@ -25,13 +25,21 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
     private async Task<string?> GetUrlContentAsync(Uri url, CancellationToken stoppingToken)
     {
-        using var response = await httpClient.GetAsync(url, stoppingToken);
+        try
+        {
+            using var response = await httpClient.GetAsync(url, stoppingToken);
 
-        response.EnsureSuccessStatusCode();
+            response.EnsureSuccessStatusCode();
 
-        var content = await response.Content.ReadAsStringAsync(stoppingToken);
+            var content = await response.Content.ReadAsStringAsync(stoppingToken);
 
-        return content;
+            return content;
+        }
+        catch (Exception error)
+        {
+            logger.LogError("{}", error.Message);
+            return null;
+        }
     }
 
     private void WriteCsv(string path, string content)
@@ -39,7 +47,7 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
         if (string.IsNullOrEmpty(path))
         {
-            logger.LogError("Cannot write CSV as path is empty");
+            logger.LogCritical("Cannot write CSV as path is empty");
             return;
         }
 
@@ -47,6 +55,8 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
         if (!File.Exists(path))
         {
+            logger.LogInformation("File '{}' doesn't exist, creating new one", path);
+
             var dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir))
             {
@@ -64,6 +74,8 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
         }
 
         write.WriteLine(content);
+
+        logger.LogInformation("[{}] A new entry added to {}", DateTime.Now, Path.GetFileName(path));
     }
 
     private static string GetCsvLine(Parser.ParserResult result)
@@ -71,6 +83,6 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
         var title = result.PageTitle;
         var totals = result.Totals;
 
-        return $"\"{title?.TradeTime}\",\"{DateTime.Now:HH:mm:ss}\",\"{title?.LastPrice}\",\"{totals?.PutPremiumTotal}\",\"{totals?.CallPremiumTotal}\"";
+        return $"\"{title?.TradeTime}\",\"{DateTime.Now:HH:mm:ss}\",\"{title?.LastPrice}\",\"{totals?.PutPremiumTotal.Replace(",", string.Empty)}\",\"{totals?.CallPremiumTotal.Replace(",", string.Empty)}\"";
     }
 }
