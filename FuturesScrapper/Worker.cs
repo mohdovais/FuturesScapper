@@ -41,9 +41,9 @@ public sealed class Worker : BackgroundService
             while (!stoppingToken.IsCancellationRequested)
             {
                 _logger.LogInformation("[{}] Starting", DateTime.Now);
-                await _service.ExecuteAsync(url, csvFile, stoppingToken);
-                
-                _logger.LogInformation("Last run completed, will wait for {} minutes before next run", delay);
+                await _service.ExecuteAsync(url, csvFile, _settings.Overwrite, stoppingToken);
+
+                _logger.LogInformation("Last run completed, waiting for {} minutes before next run", delay);
                 await Task.Delay(TimeSpan.FromMinutes(delay), stoppingToken);
             }
         }

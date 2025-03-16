@@ -2,7 +2,7 @@ namespace FuturesScrapper;
 
 public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient httpClient) : IScraperService
 {
-    public async Task ExecuteAsync(Uri url, string csvFile, CancellationToken stoppingToken)
+    public async Task ExecuteAsync(Uri url, string csvFile, bool overwrite, CancellationToken stoppingToken)
     {
         var content = await GetUrlContentAsync(url, stoppingToken);
 
@@ -20,7 +20,50 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
             return;
         }
 
-        WriteCsv(csvFile, GetCsvLine(result));
+        string newLineEntry = GetCsvLine(result);
+
+        if (overwrite && ShouldOverwrite(csvFile, newLineEntry))
+        {
+            OverwriteCsv(csvFile, newLineEntry);
+            logger.LogInformation("Over-written last entry as 'Put Premium Total' and 'Call Premium Total' were same");
+        }
+        else
+        {
+            WriteCsv(csvFile, newLineEntry);
+        }
+    }
+
+    private bool ShouldOverwrite(string csvFile, ReadOnlySpan<char> newLineEntry)
+    {
+        var lines = File.ReadLines(csvFile);
+        var count = lines.Count();
+
+        if (count == 0)
+        {
+            return false;
+        }
+
+        var lastLine = lines.Last();
+
+        if (string.IsNullOrEmpty(lastLine))
+        {
+            return false;
+        }
+
+        string[] cells = lastLine.Split(',');
+
+        if (cells.Length != 5)
+        {
+            logger.LogError("List line is not in proper format");
+            return false;
+        }
+
+        if (newLineEntry.EndsWith($"{cells[3]},{cells[4]}") == false)
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private async Task<string?> GetUrlContentAsync(Uri url, CancellationToken stoppingToken)
@@ -42,10 +85,10 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
         }
     }
 
-    private void WriteCsv(string path, string content)
+    private void WriteCsv(string csvFile, string content)
     {
 
-        if (string.IsNullOrEmpty(path))
+        if (string.IsNullOrEmpty(csvFile))
         {
             logger.LogCritical("Cannot write CSV as path is empty");
             return;
@@ -53,11 +96,11 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
 
         bool empty = false;
 
-        if (!File.Exists(path))
+        if (!File.Exists(csvFile))
         {
-            logger.LogInformation("File '{}' doesn't exist, creating new one", path);
+            logger.LogInformation("File '{}' doesn't exist, creating new one", csvFile);
 
-            var dir = Path.GetDirectoryName(path);
+            var dir = Path.GetDirectoryName(csvFile);
             if (!string.IsNullOrEmpty(dir))
             {
                 Directory.CreateDirectory(dir);
@@ -66,16 +109,33 @@ public sealed class ScraperService(ILogger<IScraperService> logger, HttpClient h
             empty = true;
         }
 
-        using var write = File.AppendText(path);
+        using var writer = File.AppendText(csvFile);
 
         if (empty)
         {
-            write.WriteLine("\"Trade Time\",\"TimeStamp\",\"Last Price\",\"Put Premium Total\",\"Call Premium Total\"");
+            writer.WriteLine("\"Trade Time\",\"TimeStamp\",\"Last Price\",\"Put Premium Total\",\"Call Premium Total\"");
         }
 
-        write.WriteLine(content);
+        writer.WriteLine(content);
 
-        logger.LogInformation("[{}] A new entry added to {}", DateTime.Now, Path.GetFileName(path));
+        logger.LogInformation("[{}] A new entry added to {}", DateTime.Now, Path.GetFileName(csvFile));
+    }
+
+    private static void OverwriteCsv(string csvFile, ReadOnlySpan<char> newLineEntry)
+    {
+        var tmpFile = Path.GetTempFileName();
+        var lines = File.ReadLines(csvFile);
+        var count = lines.Count();
+        using var writer = File.AppendText(tmpFile);
+
+        int i = 0;
+        foreach (var line in lines)
+        {
+            i++;
+            writer.WriteLine(i == count ? newLineEntry : line);
+        }
+
+        File.Replace(tmpFile, csvFile, null);
     }
 
     private static string GetCsvLine(Parser.ParserResult result)
