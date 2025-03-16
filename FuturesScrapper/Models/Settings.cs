@@ -7,4 +7,5 @@ public record Settings
     public Uri? Url { get; set; }
     public string? CsvFile { get; set; }
     public int DelayInMinutes { get; set; } = 1;
+    public bool Overwrite { get; set; } = true;
 }
